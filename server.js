@@ -13,7 +13,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://inf-293-24g-m293user20.iet-gibb.net",
-      "https://gamebase-ezbc.vercel.app",
+      "https://gamebase-frontend.vercel.app",
     ],
   })
 );
