@@ -6,6 +6,8 @@ import cors from "cors";
 dotenv.config();
 
 const app = express();
+const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
+const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const PORT = process.env.PORT || 5174;
 
 app.use(
@@ -17,7 +19,7 @@ app.use(
     ],
   })
 );
-app.use(express.text());
+app.use(express.json());
 
 let accessToken = null;
 
@@ -25,7 +27,7 @@ let accessToken = null;
 async function fetchAppToken() {
   console.log("🔑 Hole neuen App Access Token von Twitch...");
   const res = await fetch(
-    `https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`,
+    `https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`,
     { method: "POST" }
   );
 
@@ -42,7 +44,7 @@ async function fetchAppToken() {
 }
 
 // 🧠 Proxy-Endpunkt für IGDB
-app.post("/api/games", async (req, res) => {
+app.post("/api/games", express.text(), async (req, res) => {
   try {
     if (!accessToken) {
       await fetchAppToken();
@@ -113,9 +115,44 @@ app.get("/api/profile", async (req, res) => {
     res.status(500).json({ error: "Interner Serverfehler" });
   }
 });
-app.get("/api/test", (req, res) => {
-  res.json({ message: "✅ Proxy funktioniert auf Vercel" });
+
+app.post("/api/contact", async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: "Alle Felder sind erforderlich." });
+    }
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Gamebase Contact <onboarding@resend.dev>",
+        to: "loris.perez@outlook.com",
+        subject: `Neue Nachricht von ${name}`,
+        text: `Von: ${name}\nE-Mail: ${email}\n\nNachricht:\n${message}`,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("❌ Resend Fehler:", data);
+      return res.status(500).json({ error: "E-Mail konnte nicht gesendet werden.", details: data });
+    }
+
+    console.log("✅ Mail erfolgreich über Resend gesendet!");
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Server-Fehler beim Kontaktformular:", err);
+    res.status(500).json({ error: "Serverfehler beim Senden der Nachricht." });
+  }
 });
+
 
 
 // 🚀 Server starten
