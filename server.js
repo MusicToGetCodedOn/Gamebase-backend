@@ -115,11 +115,6 @@ app.get("/api/profile", async (req, res) => {
     res.status(500).json({ error: "Interner Serverfehler" });
   }
 });
-
-
-
-
-
 // 🚀 Server starten
 app.listen(PORT, () => {
   console.log(`🚀 Proxy läuft auf http://localhost:${PORT}`);
